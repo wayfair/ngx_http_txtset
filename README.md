@@ -1,8 +1,8 @@
-txtset directive: added directive to rewrite module
+txtset module/directive
 
 Description:
 
-This patch to the http rewrite module adds an additional directive, "txtset", to the module.  The purpose of "txtset" is similar to that of the "set" directive, except that the value to store in the variable isn't provided directly in the directive call, but rather lives in a text file passed to the directive.  If the text file cannot be read, or the value read from the text file contains invalid characters, a default value passed to the directive will be loaded as the value for the variable.  The directive reads a maximum of 20 characters from the file as the value to set.  The variable value is cached for 10 seconds by default to prevent excessive disk reads to the text file.  This time can be changed with an optional fourth parameter to the directive.
+This module provides an additional directive for setting NGINX variables.  The purpose of "txtset" is similar to that of the "set" directive in the http rewrite module, except that the value to store in the variable isn't provided directly in the directive call, but rather in a text file passed to the directive.  If the text file cannot be read, or the value read from the text file contains invalid characters, a default value passed to the directive will be loaded as the value for the variable.  The directive reads a maximum of 20 characters from the file as the value to set.  The variable value is cached for 10 seconds by default to prevent excessive disk reads to the text file.  This time can be changed with an optional fourth parameter to the directive.
 
 Valid locations for usage of directive:  NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
 
