@@ -21,15 +21,19 @@ typedef struct {
     ngx_int_t cache_life;
 } txtvar_info;
 
-static char *ngx_txtset(ngx_conf_t *cf, ngx_command_t *cmd,
+static ngx_int_t ngx_http_txtset_init(ngx_conf_t *cf);
+static char *ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_txtset_variable(ngx_conf_t *cf,
+    ngx_http_rewrite_loc_conf_t *lcf, ngx_str_t *value);
+int check_string(u_char *string);
 
-static ngx_command_t  ngx_http_rewrite_commands[] = {
+static ngx_command_t  ngx_http_txtset_commands[] = {
 
     { ngx_string("txtset"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                        |NGX_CONF_TAKE3|NGX_CONF_TAKE4,
-      ngx_http_rewrite_txtset,
+      ngx_http_txtset,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -38,9 +42,9 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
 };
 
 
-static ngx_http_module_t  ngx_http_rewrite_module_ctx = {
+static ngx_http_module_t  ngx_http_txtset_module_ctx = {
     NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_txtset_init,                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -53,10 +57,10 @@ static ngx_http_module_t  ngx_http_rewrite_module_ctx = {
 };
 
 
-ngx_module_t  ngx_http_rewrite_module = {
+ngx_module_t  ngx_http_txtset_module = {
     NGX_MODULE_V1,
-    &ngx_http_rewrite_module_ctx,          /* module context */
-    ngx_http_rewrite_commands,             /* module directives */
+    &ngx_http_txtset_module_ctx,           /* module context */
+    ngx_http_txtset_commands,              /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -69,26 +73,10 @@ ngx_module_t  ngx_http_rewrite_module = {
 };
 
 
-int
-check_string(u_char *string)
+static ngx_int_t
+ngx_http_txtset_init(ngx_conf_t *cf)
 {
-    int i;
-    if (string == NULL || string[0] == '\0' || string[0] == '\n') {
-        return 0;
-    }
-    for (i=0; string[i] != '\0'; i++) {
-        if (!(string[i] >= '0' && string[i] <= '9') &&
-            !(string[i] >= 'A' && string[i] <= 'Z') &&
-            !(string[i] >= 'a' && string[i] <= 'z') &&
-            !(string[i] == '-' || string[i] == '_')) {
-            if (string[i] == '\n') {
-                string[i] = 0;
-                return 1;
-            }
-            return 0;
-        }
-    }
-    return 1;
+    return NGX_OK;
 }
 
 
@@ -133,7 +121,7 @@ ngx_http_txtset_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, ui
 
 
 static char *
-ngx_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                           *value;
     ngx_http_variable_t                 *v;
@@ -189,3 +177,27 @@ ngx_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+int
+check_string(u_char *string)
+{
+    int i;
+    if (string == NULL || string[0] == '\0' || string[0] == '\n') {
+        return 0;
+    }
+    for (i=0; string[i] != '\0'; i++) {
+        if (!(string[i] >= '0' && string[i] <= '9') &&
+            !(string[i] >= 'A' && string[i] <= 'Z') &&
+            !(string[i] >= 'a' && string[i] <= 'z') &&
+            !(string[i] == '-' || string[i] == '_')) {
+            if (string[i] == '\n') {
+                string[i] = 0;
+                return 1;
+            }
+            return 0;
+        }
+    }
+    return 1;
+}
+
