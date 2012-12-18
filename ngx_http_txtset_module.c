@@ -21,11 +21,9 @@ typedef struct {
     ngx_int_t cache_life;
 } txtvar_info;
 
-static ngx_int_t ngx_http_txtset_init(ngx_conf_t *cf);
+// static ngx_int_t ngx_http_txtset_init(ngx_conf_t *cf);
 static char *ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char *ngx_http_txtset_variable(ngx_conf_t *cf,
-    ngx_http_rewrite_loc_conf_t *lcf, ngx_str_t *value);
 int check_string(u_char *string);
 
 static ngx_command_t  ngx_http_txtset_commands[] = {
@@ -44,7 +42,7 @@ static ngx_command_t  ngx_http_txtset_commands[] = {
 
 static ngx_http_module_t  ngx_http_txtset_module_ctx = {
     NULL,                                  /* preconfiguration */
-    ngx_http_txtset_init,                  /* postconfiguration */
+    NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -72,13 +70,13 @@ ngx_module_t  ngx_http_txtset_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
+/*
 static ngx_int_t
 ngx_http_txtset_init(ngx_conf_t *cf)
 {
     return NGX_OK;
 }
-
+*/
 
 ngx_int_t
 ngx_http_txtset_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data)
@@ -92,6 +90,7 @@ ngx_http_txtset_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, ui
         if ((fp = fopen(element->text_file, "r")) == NULL) {
             valid = 0;
         }
+
         if ((v->data = ngx_pnalloc(r->pool, TXTSET_MAX_SIZE + 1)) == NULL) {
             return NGX_ERROR;
         }
@@ -99,8 +98,8 @@ ngx_http_txtset_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, ui
 
         if (valid == 1) {
             fgets(v->data, TXTSET_MAX_SIZE, fp);
-            valid = check_string(v->data);
             fclose(fp);
+            valid = check_string(v->data);
         }
 
         if (valid == 0) {
@@ -149,14 +148,14 @@ ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if ((element->text_file = ngx_pcalloc(cf->pool, value[2].len)) == NULL) {
+    if ((element->text_file = ngx_pcalloc(cf->pool, value[2].len + 1)) == NULL) {
         return NGX_CONF_ERROR;
     }
     memcpy(element->text_file, value[2].data, value[2].len);
-    if ((element->default_value = ngx_pcalloc(cf->pool, value[3].len)) == NULL) {
+    if ((element->default_value = ngx_pcalloc(cf->pool, value[3].len + 1)) == NULL) {
         return NGX_CONF_ERROR;
     }
-    memcpy(element->default_value, value[3].data, value[3].len);
+    memcpy(element->default_value, value[3].data, value[3].len + 1);
 
     if (cf->args->nelts > 4) {
         element->cache_life = (ngx_int_t) atoi(value[4].data);
