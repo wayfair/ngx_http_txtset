@@ -21,8 +21,9 @@ typedef struct {
     ngx_int_t cache_life;
 } txtvar_info;
 
-// static ngx_int_t ngx_http_txtset_init(ngx_conf_t *cf);
 static char *ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_txtlower(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 int check_string(u_char *string);
 
@@ -32,6 +33,14 @@ static ngx_command_t  ngx_http_txtset_commands[] = {
       NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                        |NGX_CONF_TAKE3|NGX_CONF_TAKE4,
       ngx_http_txtset,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("txtlower"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                       |NGX_CONF_TAKE2,
+      ngx_http_txtlower,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -70,16 +79,35 @@ ngx_module_t  ngx_http_txtset_module = {
     NGX_MODULE_V1_PADDING
 };
 
-/*
-static ngx_int_t
-ngx_http_txtset_init(ngx_conf_t *cf)
-{
-    return NGX_OK;
-}
-*/
 
 ngx_int_t
-ngx_http_txtset_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data)
+ngx_http_txtset_lowervariable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t *input_var_index = (ngx_uint_t *) data;
+    ngx_http_variable_value_t *input_var;
+    int i, input_len;
+
+    input_var = ngx_http_get_indexed_variable(r, *input_var_index);
+    input_len = input_var->len;
+
+    if ((v->data = ngx_pnalloc(r->pool, input_len + 1)) == NULL) {
+        return NGX_ERROR;
+    }
+    v->data[input_len] = 0;
+    for (i = 0; i < input_len; i++) {
+        v->data[i] = tolower(input_var->data[i]);
+    }
+
+    v->len = ngx_strlen(v->data);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_txtset_txtvariable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data)
 {
     FILE *fp;
     time_t now = time(NULL);
@@ -124,7 +152,7 @@ ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                           *value;
     ngx_http_variable_t                 *v;
-    txtvar_info                             *element;
+    txtvar_info                         *element;
 
     value = cf->args->elts;
 
@@ -142,7 +170,7 @@ ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    v->get_handler = ngx_http_txtset_variable;
+    v->get_handler = ngx_http_txtset_txtvariable;
 
     if ((element = ngx_pcalloc(cf->pool, sizeof(txtvar_info))) == NULL) {
         return NGX_CONF_ERROR;
@@ -178,6 +206,49 @@ ngx_http_txtset(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *
+ngx_http_txtlower(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t                           *value;
+    ngx_http_variable_t                 *v;
+    ngx_int_t                           *input_var_index;
+
+    value = cf->args->elts;
+
+    if (value[1].data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (value[2].data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    value[1].len--;
+    value[1].data++;
+    value[2].len--;
+    value[2].data++;
+
+    v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
+    if (v == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    v->get_handler = ngx_http_txtset_lowervariable;
+
+    input_var_index = ngx_pcalloc(cf->pool, sizeof(ngx_int_t));
+
+    *input_var_index = ngx_http_get_variable_index(cf, &value[1]);
+
+    v->data = (uintptr_t) input_var_index;
+
+    return NGX_CONF_OK;
+}
+
+
 int
 check_string(u_char *string)
 {
@@ -199,4 +270,3 @@ check_string(u_char *string)
     }
     return 1;
 }
-
